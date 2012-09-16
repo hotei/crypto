@@ -29,7 +29,7 @@ func sideBySide(a, b string) string {
 
 func TestInternal512(t *testing.T) {
 	if !debugEnabled {
-		t.Fatalf("TestInternal only works with debugEnabled")
+		fmt.Println("WARNING: Skipping internal tests (debugEnabled = false)")
 		return
 	}
 
@@ -198,5 +198,18 @@ func TestInternal512(t *testing.T) {
 		if got, want := strings.TrimSpace(got.String()), strings.TrimSpace(test.want); got != want {
 			t.Errorf("%d. got|eq|want:\n%s", idx, sideBySide(got, want))
 		}
+	}
+}
+
+func BenchmarkEncrypt512(b *testing.B) {
+	var (
+		tweak = Tweak{1, 3}
+		key   = []uint64{0, 1, 2, 3, 4, 5, 6, 7}
+		input = []uint64{0, 1, 2, 3, 4, 5, 6, 7}
+	)
+
+	b.SetBytes(int64(len(input))*8)
+	for i := 0; i < b.N; i++ {
+		encrypt512(tweak, key, input)
 	}
 }

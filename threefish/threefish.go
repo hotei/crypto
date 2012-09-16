@@ -7,9 +7,13 @@ import (
 
 type Tweak [2]uint64
 
-const debugEnabled = true
+const debugEnabled = false
 var debugWriter io.Writer
 func debugWords(data []uint64) {
+	if debugWriter == nil {
+		return
+	}
+
 	var i int
 	for i < len(data) {
 		fmt.Fprintf(debugWriter, "    ")
@@ -20,19 +24,22 @@ func debugWords(data []uint64) {
 	}
 }
 func debugf(format string, args ...interface{}) {
+	if debugWriter == nil {
+		return
+	}
+
 	fmt.Fprintf(debugWriter, format + "\n", args...)
 }
 
 func mix(in0, in1 uint64, rot uint) (out0, out1 uint64) {
-	sum := in0 + in1
-	return sum, in1<<rot | in1>>(64-rot) ^ sum
+	return in0 + in1, in1<<rot | in1>>(64-rot) ^ (in0 + in1)
 }
 
 func encrypt512(tweak Tweak, key, state []uint64) {
 	const C240 uint64 = 0x1bd11bdaa9fc1a22
 
 	const KeySize = 512
-	const Rounds = 5 //72
+	const Rounds = 72
 	const Words = KeySize / 64
 
 	if debugEnabled {
@@ -73,10 +80,12 @@ func encrypt512(tweak Tweak, key, state []uint64) {
 	}
 	keyx := append(key, knw)
 
+	// TODO(kevlar): Everything above this line can be precomputed when used in Skein
+
 	// Compute the subkeys
 	var subkeys [Rounds/4 + 1][Words]uint64
 	for s := range subkeys {
-		for i := 0; i < Words; i++ {
+		for i := range subkeys[s] {
 			switch i {
 			default:
 				subkeys[s][i] = keyx[(s+i) % (Words+1)]
@@ -99,6 +108,8 @@ func encrypt512(tweak Tweak, key, state []uint64) {
 		debugWords(state)
 		debugf("")
 	}
+
+	// TODO(kevlar): Everything above this line can be precomputed when used to 3F lots of data
 
 	// Perform the requisite number of rounds
 	for round := 0; round < Rounds; round++ {
