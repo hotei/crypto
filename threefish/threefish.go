@@ -1,35 +1,8 @@
 package threefish
 
-import (
-	"fmt"
-	"io"
-)
-
 type Tweak [2]uint64
 
-const debugEnabled = false
-var debugWriter io.Writer
-func debugWords(data []uint64) {
-	if debugWriter == nil {
-		return
-	}
-
-	var i int
-	for i < len(data) {
-		fmt.Fprintf(debugWriter, "    ")
-		for j := 0; j < 4 && i < len(data); i, j = i+1, j+1 {
-			fmt.Fprintf(debugWriter, " %08X.%08X ", data[i] >> 32, uint32(data[i]))
-		}
-		fmt.Fprintf(debugWriter, "\n")
-	}
-}
-func debugf(format string, args ...interface{}) {
-	if debugWriter == nil {
-		return
-	}
-
-	fmt.Fprintf(debugWriter, format + "\n", args...)
-}
+const debugThreefish = false
 
 func mix(in0, in1 uint64, rot uint) (out0, out1 uint64) {
 	return in0 + in1, in1<<rot | in1>>(64-rot) ^ (in0 + in1)
@@ -42,7 +15,7 @@ func encrypt512(tweak Tweak, key, state []uint64) {
 	const Rounds = 72
 	const Words = KeySize / 64
 
-	if debugEnabled {
+	if debugThreefish {
 		debugf(":Threefish-%d:  encryption + plaintext feedforward (round-by-round):", KeySize)
 		debugf("  Tweak:")
 		debugWords(tweak[:])
@@ -61,17 +34,17 @@ func encrypt512(tweak Tweak, key, state []uint64) {
 		{8, 35, 56, 22},
 	}
 
-	if debugEnabled {
+	if debugThreefish {
 		if got, want := len(key), Words; got != want {
-			panic(fmt.Sprintf("key size = %v, want %v", got, want))
+			panicf("key size = %v, want %v", got, want)
 		}
 		if got, want := len(state), Words; got != want {
-			panic(fmt.Sprintf("state size = %v, want %v", got, want))
+			panicf("state size = %v, want %v", got, want)
 		}
 	}
 
 	// Compute the extended tweak
-	tweakx := append(tweak[:], tweak[0] ^ tweak[1])
+	tweakx := append(tweak[:], tweak[0]^tweak[1])
 
 	// Compute the extended key
 	knw := C240
@@ -88,18 +61,18 @@ func encrypt512(tweak Tweak, key, state []uint64) {
 		for i := range subkeys[s] {
 			switch i {
 			default:
-				subkeys[s][i] = keyx[(s+i) % (Words+1)]
-			case Words-3:
-				subkeys[s][i] = keyx[(s+i) % (Words+1)] + tweakx[s % 3]
-			case Words-2:
-				subkeys[s][i] = keyx[(s+i) % (Words+1)] + tweakx[(s+1) % 3]
-			case Words-1:
-				subkeys[s][i] = keyx[(s+i) % (Words+1)] + uint64(s)
+				subkeys[s][i] = keyx[(s+i)%(Words+1)]
+			case Words - 3:
+				subkeys[s][i] = keyx[(s+i)%(Words+1)] + tweakx[s%3]
+			case Words - 2:
+				subkeys[s][i] = keyx[(s+i)%(Words+1)] + tweakx[(s+1)%3]
+			case Words - 1:
+				subkeys[s][i] = keyx[(s+i)%(Words+1)] + uint64(s)
 			}
 		}
 	}
 
-	if debugEnabled {
+	if debugThreefish {
 		debugf("  Tweak schedule:")
 		debugWords(tweakx)
 		debugf("  Key   schedule:")
@@ -119,8 +92,8 @@ func encrypt512(tweak Tweak, key, state []uint64) {
 			for i := range state {
 				state[i] += subkey[i]
 			}
-			if debugEnabled {
-				rtext := fmt.Sprintf("key injection #%02d", round/4)
+			if debugThreefish {
+				rtext := sprintf("key injection #%02d", round/4)
 				if round == 0 {
 					rtext = "initial key injection"
 				}
@@ -135,8 +108,8 @@ func encrypt512(tweak Tweak, key, state []uint64) {
 			state[i], state[i+1] = mix(state[i], state[i+1], RotationSchedule[round%8][i/2])
 		}
 
-		if debugEnabled {
-			rtext := fmt.Sprintf("round %2d", round+1)
+		if debugThreefish {
+			rtext := sprintf("round %2d", round+1)
 			debugf(":Threefish-%d:  [state after %s]=", KeySize, rtext)
 			debugWords(state)
 			debugf("")
@@ -144,7 +117,7 @@ func encrypt512(tweak Tweak, key, state []uint64) {
 
 		// Shuffle
 		state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7] =
-		state[2], state[1], state[4], state[7], state[6], state[5], state[0], state[3]
+			state[2], state[1], state[4], state[7], state[6], state[5], state[0], state[3]
 	}
 
 	// Add the final subkeys

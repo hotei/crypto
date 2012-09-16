@@ -1,10 +1,8 @@
 package threefish
 
 import (
-	"os"
 	"fmt"
 	"testing"
-	"io/ioutil"
 )
 
 func TestSkein(t *testing.T) {
@@ -18,7 +16,6 @@ func TestSkein(t *testing.T) {
 		{"\x36\xF9\xF0\xA6\x5F\x2C\xA4\x98\xD7\x39\xB9\x44\xD6\xEF\xF3\xDA\x5E\xBB\xA5\x7E\x7D\x9C\x41\x59\x8A\x2B\x0E\x43\x80\xF3\xCF\x4B\x47\x9E\xC2\x34\x8D\x01\x5F\xFE\x62\x56\x27\x35\x11\x15\x4A\xFC\xF3\xB4\xB4\xBF\x09\xD6\xC4\x74\x4F\xDD\x0F\x62\xD7\x50\x79\xD4\x40\x70\x6B\x05", "436067709B778CD3B60934649C8942D1930D74C36F8308686FB18B39E01DECFCC34EDB363D7EF2FD51353D571BE1019F119EE79A5DA61898927E6DB5BE909D69"},
 	}
 
-	debugWriter = os.Stderr
 	for idx, test := range tests {
 		h := NewSkein(512, 512)
 		fmt.Fprint(h, test.data)
@@ -34,12 +31,15 @@ func BenchmarkSkein512(b *testing.B) {
 	sk := NewSkein(512, 512)
 	data := []byte("\x36\xF9\xF0\xA6\x5F\x2C\xA4\x98\xD7\x39\xB9\x44\xD6\xEF\xF3\xDA\x5E\xBB\xA5\x7E\x7D\x9C\x41\x59\x8A\x2B\x0E\x43\x80\xF3\xCF\x4B\x47\x9E\xC2\x34\x8D\x01\x5F\xFE\x62\x56\x27\x35\x11\x15\x4A\xFC\xF3\xB4\xB4\xBF\x09\xD6\xC4\x74\x4F\xDD\x0F\x62\xD7\x50\x79\xD4\x40\x70\x6B\x05")
 	out := make([]byte, 0, sk.Size())
-	debugWriter = ioutil.Discard
-	for i := 0; i < b.N; i++ {
-		sk.Write(data)
-		sk.Sum(out)
 
-		sk.Reset()
-		out = out[:0]
-	}
+	b.SetBytes(int64(len(data)))
+	collect(func(){
+		for i := 0; i < b.N; i++ {
+			sk.Write(data)
+			sk.Sum(out)
+
+			sk.Reset()
+			out = out[:0]
+		}
+	})
 }

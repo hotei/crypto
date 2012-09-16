@@ -28,8 +28,8 @@ func sideBySide(a, b string) string {
 }
 
 func TestInternal512(t *testing.T) {
-	if !debugEnabled {
-		fmt.Println("WARNING: Skipping internal tests (debugEnabled = false)")
+	if !debugThreefish {
+		fmt.Println("WARNING: Skipping internal tests (debugThreefish = false)")
 		return
 	}
 
@@ -190,10 +190,9 @@ func TestInternal512(t *testing.T) {
 	}}
 
 	for idx, test := range tests {
-		got := new(bytes.Buffer)
-		debugWriter = got
-
-		encrypt512(test.tweak, test.key, test.input)
+		got := collect(func(){
+			encrypt512(test.tweak, test.key, test.input)
+		})
 
 		if got, want := strings.TrimSpace(got.String()), strings.TrimSpace(test.want); got != want {
 			t.Errorf("%d. got|eq|want:\n%s", idx, sideBySide(got, want))
@@ -209,7 +208,9 @@ func BenchmarkEncrypt512(b *testing.B) {
 	)
 
 	b.SetBytes(int64(len(input))*8)
-	for i := 0; i < b.N; i++ {
-		encrypt512(tweak, key, input)
-	}
+	collect(func(){
+		for i := 0; i < b.N; i++ {
+			encrypt512(tweak, key, input)
+		}
+	})
 }

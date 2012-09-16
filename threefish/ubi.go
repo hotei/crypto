@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 )
 
+const debugSkein = false
+
 type Skein struct {
 	// Store the configured bounds of the skein hash
 	size    int // bytes
@@ -87,25 +89,31 @@ func (sk *Skein) apply(opt TweakOption) {
 	tweak := makeTweak(MessageType, sk.pos, opt)
 	copy(sk.state, sk.plain)
 
-	debugf("tweak")
-	debugWords(tweak[:])
-	debugf("chain input")
-	debugWords(sk.chain)
-	debugf("state input")
-	debugWords(sk.state)
+	if debugSkein {
+		debugf("tweak")
+		debugWords(tweak[:])
+		debugf("chain input")
+		debugWords(sk.chain)
+		debugf("state input")
+		debugWords(sk.state)
+	}
 
 	encrypt512(tweak, sk.chain, sk.state)
 
-	debugf("state output")
-	debugWords(sk.state)
+	if debugSkein {
+		debugf("state output")
+		debugWords(sk.state)
+	}
 
 	// Plaintext feedforward
 	for i := range sk.chain {
 		sk.chain[i] = sk.state[i] ^ sk.plain[i]
 	}
 
-	debugf("after feedforward")
-	debugWords(sk.chain)
+	if debugSkein {
+		debugf("after feedforward")
+		debugWords(sk.chain)
+	}
 
 	sk.offset = 0
 }
@@ -119,18 +127,22 @@ func (sk *Skein) output() {
 	// Compute the "output" tweak
 	tweak := makeTweak(OutputType, 0, 0)
 
-	debugf("tweak")
-	debugWords(tweak[:])
-	debugf("chain input")
-	debugWords(sk.chain)
-	debugf("state input")
-	debugWords(sk.state)
+	if debugSkein {
+		debugf("tweak")
+		debugWords(tweak[:])
+		debugf("chain input")
+		debugWords(sk.chain)
+		debugf("state input")
+		debugWords(sk.state)
+	}
 
 	// UBI(G, ctr, Tout)
 	encrypt512(tweak, sk.chain, sk.state)
 
-	debugf("final output")
-	debugWords(sk.state)
+	if debugSkein {
+		debugf("final output")
+		debugWords(sk.state)
+	}
 }
 
 func (sk *Skein) Write(src []byte) (int, error) {
