@@ -2,34 +2,13 @@ package threefish
 
 import (
 	"testing"
-	"bytes"
 	"strings"
-	"text/tabwriter"
 	"fmt"
 )
 
-func sideBySide(a, b string) string {
-	buf := new(bytes.Buffer)
-	out := tabwriter.NewWriter(buf, 0, 0, 8, ' ', 0)
-
-	aLines, bLines := strings.Split(a, "\n"), strings.Split(b, "\n")
-	for i := 0; i < len(aLines) || i < len(bLines); i++ {
-		var lhs, rhs string
-		if i < len(aLines) {
-			lhs = aLines[i]
-		}
-		if i < len(bLines) {
-			rhs = bLines[i]
-		}
-		fmt.Fprintf(out, "%s\t%v\t%s\n", lhs, lhs==rhs, rhs)
-	}
-	out.Flush()
-	return strings.TrimRight(buf.String(), "\n")
-}
-
 func TestInternal512(t *testing.T) {
 	if !debugThreefish {
-		fmt.Println("WARNING: Skipping internal tests (debugThreefish = false)")
+		fmt.Println("WARNING: Skipping internal threefish tests (debugThreefish = false)")
 		return
 	}
 

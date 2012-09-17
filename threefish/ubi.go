@@ -84,26 +84,23 @@ func (sk *Skein) apply(opt TweakOption) {
 	if sk.pos == 0 {
 		opt |= FirstBlockOption
 	}
-	sk.pos += uint64(sk.offset) * 8
+	sk.pos += uint64(sk.offset)
 
 	tweak := makeTweak(MessageType, sk.pos, opt)
 	copy(sk.state, sk.plain)
 
 	if debugSkein {
-		debugf("tweak")
+		debugf(":Skein-%d:  Block: outBits=%4d. T0=%06X. Type=%s.  Flags=%s", sk.size*8, sk.outSize*8, tweak[0], MessageType, opt)
+		debugf("  Tweak:")
 		debugWords(tweak[:])
-		debugf("chain input")
+		debugf("  State words:")
 		debugWords(sk.chain)
-		debugf("state input")
-		debugWords(sk.state)
+		debugf("  Input block (bytes):")
+		debugBytes(sk.bytes)
+		debugf("")
 	}
 
 	encrypt512(tweak, sk.chain, sk.state)
-
-	if debugSkein {
-		debugf("state output")
-		debugWords(sk.state)
-	}
 
 	// Plaintext feedforward
 	for i := range sk.chain {
@@ -111,8 +108,10 @@ func (sk *Skein) apply(opt TweakOption) {
 	}
 
 	if debugSkein {
-		debugf("after feedforward")
+		debugf(":Skein-%d:  [state after plaintext feedforward]=", sk.size*8)
 		debugWords(sk.chain)
+		debugf("    ----------")
+		debugf("")
 	}
 
 	sk.offset = 0
@@ -125,23 +124,28 @@ func (sk *Skein) output() {
 	}
 
 	// Compute the "output" tweak
-	tweak := makeTweak(OutputType, 0, 0)
+	tweak := makeTweak(OutputType, 8, FirstBlockOption | FinalBlockOption)
+	// TODO(kevlar): where does the 8 come from?
 
 	if debugSkein {
-		debugf("tweak")
+		debugf(":Skein-%d:  Block: outBits=%4d. T0=%06X. Type=%s.  Flags=%s", sk.size*8, sk.outSize*8, tweak[0], OutputType, FirstBlockOption | FinalBlockOption)
+		debugf("  Tweak:")
 		debugWords(tweak[:])
-		debugf("chain input")
+		debugf("  State words:")
 		debugWords(sk.chain)
-		debugf("state input")
-		debugWords(sk.state)
+		debugf("  Input block (bytes):")
+		input := appendInts(nil, sk.state...)
+		debugBytes(input)
+		debugf("")
 	}
 
-	// UBI(G, ctr, Tout)
 	encrypt512(tweak, sk.chain, sk.state)
 
 	if debugSkein {
-		debugf("final output")
-		debugWords(sk.state)
+		debugf(":Skein-%d:  [state after plaintext feedforward]=", sk.size*8)
+		debugWords(sk.chain)
+		debugf("    ----------")
+		debugf("")
 	}
 }
 
@@ -166,15 +170,26 @@ func (sk *Skein) Write(src []byte) (int, error) {
 type TweakType uint64
 
 const (
-	KeyType             TweakType = 0 << 48
-	ConfigType          TweakType = 4 << 48
-	PersonalizationType TweakType = 8 << 48
-	PublicKeyType       TweakType = 12 << 48
-	KDFType             TweakType = 16 << 48
-	NonceType           TweakType = 20 << 48
-	MessageType         TweakType = 48 << 48
-	OutputType          TweakType = 63 << 48
+	KeyType             TweakType = 0 << 56
+	ConfigType          TweakType = 4 << 56
+	PersonalizationType TweakType = 8 << 56
+	PublicKeyType       TweakType = 12 << 56
+	KDFType             TweakType = 16 << 56
+	NonceType           TweakType = 20 << 56
+	MessageType         TweakType = 48 << 56
+	OutputType          TweakType = 63 << 56
 )
+
+func (tt TweakType) String() string {
+	switch tt {
+	case MessageType:
+		return "MSG"
+	case OutputType:
+		return "OUT"
+	// TODO(kevlar): others
+	}
+	return "???"
+}
 
 type TweakOption uint64
 
@@ -184,14 +199,32 @@ const (
 	BitPadOption     TweakOption = 1 << 47
 )
 
+func (to TweakOption) String() string {
+	var s string
+	if to & FirstBlockOption != 0 {
+		s += " First"
+	}
+	if to & FinalBlockOption != 0 {
+		s += " Final"
+	}
+	// TODO(kevlar): others
+	return s
+}
+
 func makeTweak(ttype TweakType, bitpos uint64, options TweakOption) Tweak {
-	return Tweak{uint64(ttype) | uint64(options), bitpos}
+	return Tweak{bitpos, uint64(ttype) | uint64(options)}
 }
 
 func (sk *Skein) Sum(b []byte) []byte {
 	sk.apply(FinalBlockOption)
 	sk.output()
-	return appendInts(b, sk.state...)
+	b = appendInts(b, sk.state...)
+	
+	if debugSkein {
+		debugf(":Skein-%d:  Final output=", sk.size*8)
+		debugBytes(b)
+	}
+	return b
 }
 
 func appendInts(dst []byte, src ...uint64) []byte {
