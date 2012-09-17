@@ -44,14 +44,15 @@ func encrypt512(tweak Tweak, key, state []uint64) {
 	}
 
 	// Compute the extended tweak
-	tweakx := append(tweak[:], tweak[0]^tweak[1])
+	tweakx := [3]uint64{tweak[0], tweak[1], tweak[0]^tweak[1]}
 
 	// Compute the extended key
 	knw := C240
 	for _, ki := range key {
 		knw ^= ki
 	}
-	keyx := append(key, knw)
+	keyx := [9]uint64{}
+	keyx[copy(keyx[:], key)] = knw
 
 	// TODO(kevlar): Everything above this line can be precomputed when used in Skein
 
@@ -74,9 +75,9 @@ func encrypt512(tweak Tweak, key, state []uint64) {
 
 	if debugThreefish {
 		debugf("  Tweak schedule:")
-		debugWords(tweakx)
+		debugWords(tweakx[:])
 		debugf("  Key   schedule:")
-		debugWords(keyx)
+		debugWords(keyx[:])
 		debugf("  Input block (words):")
 		debugWords(state)
 		debugf("")

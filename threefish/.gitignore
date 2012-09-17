@@ -1,2 +1,4 @@
 NIST
 *.pdf
+*.test
+*.prof
