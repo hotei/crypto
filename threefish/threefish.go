@@ -25,7 +25,7 @@ func encrypt512(tweak Tweak, key, state []uint64) {
 
 	var RotationSchedule = [8][4]uint{ // [round][wordpair]
 		{46, 36, 19, 37},
-		{33, 27, 11, 42},
+		{33, 27, 14, 42},
 		{17, 49, 36, 39},
 		{44, 9, 54, 56},
 		{39, 30, 34, 24},

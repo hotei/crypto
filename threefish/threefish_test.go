@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func TestInternal512(t *testing.T) {
+func TestThreefishInternal512(t *testing.T) {
 	if !debugThreefish {
 		fmt.Println("WARNING: Skipping internal threefish tests (debugThreefish = false)")
 		return
